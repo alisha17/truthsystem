@@ -4,8 +4,13 @@ import datetime
 from mongoengine import *
 
 class Tweet(Document):
-	tweet = StringField(max_length=200)
-	date = DateTimeField(default=datetime.datetime.now)
+	status = StringField()
+	created_at = DateTimeField(default=datetime.datetime.now)
+	user = StringField()
+	user_id = StringField()
+	followers = IntField()
+	friends = IntField()
+	verified = BooleanField()
 	similarity = DecimalField()
 
 class Article(Document):

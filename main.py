@@ -6,88 +6,111 @@ import datetime
 import mongoengine
 import textblob
 import sklearn
+from collections import Counter
 
 from mongoengine import connect
 from models import Tweet, Article
 from textblob import TextBlob
 from similar import cosine_sim
 
+# TO DO:
+# make this work
+# store in the table
+# write function to check link from one user to another user
+
 def news():
+	"""
+      Fetch news articles and save them, for now leave this
+	"""
 	r = requests.get(url)
 
 	new_dict = json.loads(r.text)
+
 	pp = pprint.PrettyPrinter(indent=4)
 
 	for item in new_dict['sources']:
-		for k, v in item.items():
-			if k == "id":
-				url2 = "https://newsapi.org/v1/articles?source={0}&apiKey={1}".format(v, key)
+		newsSource = item['id']
+		newsApiData = "https://newsapi.org/v1/articles?source={0}&apiKey={1}".format(newsSource, key)
+		respons = requests.get(newsApiData)
+		response_dict = json.loads(respons.text)
+		# print (response_dict)
+		name_of_source = newsSource
+		for article in response_dict['articles']:
+			description = article['description']
+			if(description==None):
+				break
 
-				respons = requests.get(url2)
-				respons_dict = json.loads(respons.text)
+			wordFrequency=Counter()
+			for x in description.split(' '):
+				wordFrequency[x] += 1
+			if any(wordFrequency.get(x)!=None for x in list_words) or all(wordFrequency.get(x)!=None for x in list_words):
+				similarity = cosine_sim(text, description)
+				print (similarity)
+				# if similarity >= 0.2:
+				# 	print (similarity, item2['description'])
+				dict_to_pass = {
+				"source": name_of_source,
+				"title": article["title"],
+				"publishedAt": article["publishedAt"],
+				"description": article["description"]
+				}
 
-				name_of_source = v
-
-				for item2 in respons_dict['articles']:
-					for k,v in item2.items():
-						if k == "description":G
-							if v is None:
-								pass
-							elif any(x in v for x in list_words) or all(x in v for x in list_words):
-								similarity = cosine_sim(text, item2['description'])
-								# if similarity >= 0.2:
-								# 	print (similarity, item2['description'])
-								dict_to_pass = {
-								"source": name_of_source,
-								"title": item2["title"],
-								"publishedAt": item2["publishedAt"],
-								"description": item2["description"]
-								}
-
-								article_obj = Article(dict_to_pass)
-								article_obj.save()
-
-
-# user analysis
+				article_obj = Article(dict_to_pass)
+				article_obj.save()
 
 
 class StdOutListener(tweepy.StreamListener):
+	"""
+       Tweepy class for streaming data
+	"""
 
-    def on_status(self, status):
-        if hasattr (status, 'retweeted_status'):
-        	return
+	def __init__(self, api=None):
+		super(StdOutListener, self).__init__()
+		self.num_tweets = 0
 
-        similarity = cosine_sim(text, status.text)
+	def on_status(self, status):
+		if hasattr (status, 'retweeted_status'):
+			return
 
-        # if similarity >= 0.2:
-        # 	print (similarity, status.text)
+		self.num_tweets += 1
 
-        tweet_test = Tweet(tweet= status.text)
-        tweet_test.created_at = status.created_at
-        tweet_test.save()
+		if self.num_tweets < 20:
+			if cosine_sim(text, status.text) != 0.0:
+				status1 = status.text.lower()
+				tweet_test = Tweet(status = status1)
+				tweet_test.created_at = status.created_at
+				tweet_test.user = status.user.screen_name
+				tweet_test.user_id = status.user.id_str
+				tweet_test.followers = status.user.followers_count
+				tweet_test.friends = status.user.friends_count
+				tweet_test.verified = status.user.verified
+				tweet_test.similarity = cosine_sim(text, status.text)
+				tweet_test.save()
+				print (self.num_tweets)
+				return True
+		else:
+			return False
 
-    def on_data
 
-    def on_error(self, status):
-        if status == 420:
-        	return False
-# popularuty, urls
-# further filter
-# snopes.com
+	def on_error(self, status):
+		if status == 420:
+			return False
+
+# 19773456
+# 19773464
+
 # charts and tables
-# friends and followers of author of tweets
-# independant people
-
 
 if __name__ == '__main__':
 
 	list_words = []
 	list_sentence = []
 	list_nouns = []
+	count = 0
 
-	key= "e598d1d8a77a45c28d889513a50fb4af"
+	key= "XXXXXXXXXXXXXXXXX"
 	url = "https://newsapi.org/v1/sources?language=en"
-	text = "Hilary Clinton lost elections in 2016. Donald Trump won!"
+	text = "Ivana Trump I am first lady".lower()
 	stopwords = ["the", "in", "a"]
 
 	blob = TextBlob(text)
@@ -103,21 +126,28 @@ if __name__ == '__main__':
 
 	list_words = [word for word in list_words if word not in stopwords]
 
-	connect(db= 'twitter_data')
+	connect(db = 'twitter_data')
 
-	news()
+	# news()
 
-	consumer_key = "pZxa21qIfTXxmX6dVIYzB70fr"
-	consumer_secret = "kYSwkSro7QqPm7hiGsIapFNIvhy0S57eiz94trji6wOreICJTS"
+	consumer_key = "XXXXXXXXX"
+	consumer_secret = "XXXXXXX"
 
-	access_token = "798765580224327680-JjzdT6URTsJkClNDrbY5c4m5f5Rv7oP"
-	access_token_secret = "PVcz8NnZnLMzdJr1VLavSj8yPV4w24acDnyLtK1xhyxl5"
+	access_token = "XXXXXXXXX"
+	access_token_secret = "XXXXXX"
 
 	l = StdOutListener()
 	auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 	auth.set_access_token(access_token, access_token_secret)
 	stream = tweepy.Stream(auth, l)
 	stream.filter(track= list_words)
+
+	Tweet.objects.order_by('-created_at')
+	print ("I am done")
+
+	# for document in Tweet.objects:
+
+
 
 
 # Real news spread far
