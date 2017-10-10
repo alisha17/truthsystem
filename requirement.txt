@@ -1,0 +1,6 @@
+requests==2.18.4
+tweepy==3.5.0
+mongoengine==0.14.3
+textblob==0.13.0
+numpy==1.13.3
+scipy==0.19.1
