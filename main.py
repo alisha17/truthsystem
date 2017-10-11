@@ -12,6 +12,7 @@ from mongoengine import connect
 from models import Tweet, Article
 from textblob import TextBlob
 from similar import cosine_sim
+from config import auth, key
 
 # TO DO:
 # make this work
@@ -77,6 +78,7 @@ class StdOutListener(tweepy.StreamListener):
 		if self.num_tweets < 20:
 			if cosine_sim(text, status.text) != 0.0:
 				status1 = status.text.lower()
+
 				tweet_test = Tweet(status = status1)
 				tweet_test.created_at = status.created_at
 				tweet_test.user = status.user.screen_name
@@ -84,6 +86,8 @@ class StdOutListener(tweepy.StreamListener):
 				tweet_test.followers = status.user.followers_count
 				tweet_test.friends = status.user.friends_count
 				tweet_test.verified = status.user.verified
+				tweet_test.geo = status.geo
+				tweet_test.ip = status.coordinates
 				tweet_test.similarity = cosine_sim(text, status.text)
 				tweet_test.save()
 				print (self.num_tweets)
@@ -108,19 +112,20 @@ if __name__ == '__main__':
 	list_nouns = []
 	count = 0
 
-	key= "XXXXXXXXXXXXXXXXX"
+	
 	url = "https://newsapi.org/v1/sources?language=en"
 	text = "Ivana Trump I am first lady".lower()
-	stopwords = ["the", "in", "a"]
+	stopwords = ["the", "in", "a", "i", "am"]
 
 	blob = TextBlob(text)
-
 	list_words = blob.words
 	b = blob.sentences
+	
 	for i in b:
 		list_words.append(str(i))
 
 	c = blob.noun_phrases
+
 	for j in c:
 		list_words.append(str(j))
 
@@ -130,15 +135,8 @@ if __name__ == '__main__':
 
 	# news()
 
-	consumer_key = "XXXXXXXXX"
-	consumer_secret = "XXXXXXX"
-
-	access_token = "XXXXXXXXX"
-	access_token_secret = "XXXXXX"
-
 	l = StdOutListener()
-	auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-	auth.set_access_token(access_token, access_token_secret)
+
 	stream = tweepy.Stream(auth, l)
 	stream.filter(track= list_words)
 

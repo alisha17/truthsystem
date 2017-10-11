@@ -11,6 +11,8 @@ class Tweet(Document):
 	followers = IntField()
 	friends = IntField()
 	verified = BooleanField()
+	geo = StringField()
+	ip = StringField()
 	similarity = DecimalField()
 
 class Article(Document):
